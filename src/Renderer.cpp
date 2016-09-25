@@ -1,4 +1,4 @@
-#include "Renderer.h"
+#include "../include/Renderer.h"
 
 Renderer::Renderer(const Shader &cubeshader) : cube_shader_(cubeshader) { InitRenderData(); }
 Renderer::~Renderer() { glDeleteVertexArrays(1, &cube_vao_); glDeleteVertexArrays(1, &grid_vao_); }

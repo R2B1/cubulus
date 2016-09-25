@@ -1,8 +1,12 @@
+//----------------------------------------
+// Cubulus 2: The Return of Cubatron
+//----------------------------------------
+
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include "Game.h"
-#include "ResourceManager.h"
+#include "../include/Game.h"
+#include "../include/ResourceManager.h"
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 //static void CursorPositionCallback(GLFWwindow* window, double xpos, double ypos);

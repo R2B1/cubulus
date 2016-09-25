@@ -1,8 +1,7 @@
 #include <iostream>
-#include "Game.h"
-#include "ResourceManager.h"
-#include "Renderer.h"
-//#include "GameObject.h"
+#include "../include/Game.h"
+#include "../include/ResourceManager.h"
+#include "../include/Renderer.h"
 
 const GLfloat PI = 3.14159f;
 Renderer* renderer;
@@ -15,7 +14,7 @@ void Game::Init()
   camera_theta_ = 90.f*(PI/180.f);  // 0 to 360 deg
   camera_phi_ = 0.f*(PI/180.f);  // -45 to 45 deg
 
-  ResourceManager::LoadShader("../src/shaders/cube.vert", "../src/shaders/cube.frag", nullptr, "cube_shader");
+  ResourceManager::LoadShader("../../src/shaders/cube.vert", "../../src/shaders/cube.frag", nullptr, "cube_shader");
   renderer = new Renderer(ResourceManager::GetShader("cube_shader"));
 
   //Level one; one.load("levels/1.txt");

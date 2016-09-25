@@ -4,7 +4,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <GLM/glm.hpp>
-//#include "GameLevel.h"
+//#include "../include/Level.h"
 
 enum GameState { ACTIVE, ROTATING, MENU, WIN };
 enum RotateState { ROT_LEFT, ROT_RIGHT, ROT_UP, ROT_DOWN };

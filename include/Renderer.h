@@ -3,7 +3,7 @@
 #include <GL/glew.h>
 #include <GLM/glm.hpp>
 #include <GLM/gtc/matrix_transform.hpp>
-#include "Shader.h"
+#include "../include/Shader.h"
 
 class Renderer
 {

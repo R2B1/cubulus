@@ -1,5 +1,5 @@
 #include <iostream>
-#include "Shader.h"
+#include "../include/Shader.h"
 
 Shader &Shader::Use() { glUseProgram(id_);  return *this; }
 

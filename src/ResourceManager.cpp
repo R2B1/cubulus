@@ -1,7 +1,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include "ResourceManager.h"
+#include "../include/ResourceManager.h"
 
 // pair<const key_type, mapped_type> value_type;
 std::map<std::string, Shader> ResourceManager::shader_list_;
