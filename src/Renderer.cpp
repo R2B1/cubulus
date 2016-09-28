@@ -1,7 +1,15 @@
 #include "../include/Renderer.h"
 
-Renderer::Renderer(const Shader &cubeshader) : cube_shader_(cubeshader) { InitRenderData(); }
-Renderer::~Renderer() { glDeleteVertexArrays(1, &cube_vao_); glDeleteVertexArrays(1, &grid_vao_); }
+Renderer::Renderer(const Shader &cubeshader, const Shader &lineshader) 
+  : cube_shader_(cubeshader), line_shader_(lineshader) 
+{ InitRenderData(); }
+
+Renderer::~Renderer() 
+{ 
+  glDeleteVertexArrays(1, &cube_vao_); 
+  glDeleteVertexArrays(1, &grid_vao_); 
+  glDeleteVertexArrays(1, &axis_vao_);
+}
 
 void Renderer::DrawCube(glm::vec3 position, GLfloat rotate_angle_theta, GLfloat rotate_angle_phi, glm::vec4 color)
 {
@@ -9,7 +17,7 @@ void Renderer::DrawCube(glm::vec3 position, GLfloat rotate_angle_theta, GLfloat 
   cube_shader_.SetVector4f("uni_color", color);
   glm::mat4 cubeModel = glm::mat4(1.0f);
   cubeModel = glm::rotate(cubeModel, rotate_angle_theta, glm::vec3(0.0f, 1.0f, 0.0f));
-  cubeModel = glm::rotate(cubeModel, rotate_angle_phi, glm::vec3(1.0f, 0.0f, 0.0f));
+  cubeModel = glm::rotate(cubeModel, rotate_angle_phi, glm::vec3(cos(rotate_angle_theta), 0.0f, sin(rotate_angle_theta)));
   cubeModel = glm::translate(cubeModel, position);
   //cubeModel = glm::scale(cubeModel, glm::vec3(size, 1.0f));
   cube_shader_.SetMatrix4("uni_model", cubeModel);
@@ -19,12 +27,12 @@ void Renderer::DrawCube(glm::vec3 position, GLfloat rotate_angle_theta, GLfloat 
 
 void Renderer::DrawLine(glm::vec3 position, GLfloat rotate_angle, glm::vec3 rotate_axis, glm::vec4 color)
 {
-  cube_shader_.Use();
-  cube_shader_.SetVector4f("uni_color", color);
+  line_shader_.Use();
+  line_shader_.SetVector4f("uni_color", color);
   glm::mat4 lineModel = glm::mat4(1.0f); 
   lineModel = glm::rotate(lineModel, rotate_angle, rotate_axis);
   lineModel = glm::translate(lineModel, position);
-  cube_shader_.SetMatrix4("uni_model", lineModel);
+  line_shader_.SetMatrix4("uni_model", lineModel);
   glDrawArrays(GL_LINES, 0, 2);
 }
 
@@ -32,47 +40,48 @@ void Renderer::InitRenderData()
 {	
   GLfloat len = 0.505f;
   GLfloat cube_vertices[] = {
-    -len, -len, -len,
-    len, -len, -len,
-    len,  len, -len,
-    len,  len, -len,
-    -len,  len, -len,
-    -len, -len, -len,
+     // Positions      // Normals
+    -len, -len, -len,  0.0f,  0.0f, -1.0f,
+     len, -len, -len,  0.0f,  0.0f, -1.0f,
+     len,  len, -len,  0.0f,  0.0f, -1.0f,
+     len,  len, -len,  0.0f,  0.0f, -1.0f,
+    -len,  len, -len,  0.0f,  0.0f, -1.0f,
+    -len, -len, -len,  0.0f,  0.0f, -1.0f,
 
-    -len, -len,  len,
-    len, -len,  len,
-    len,  len,  len,
-    len,  len,  len,
-    -len,  len,  len,
-    -len, -len,  len,
+    -len, -len,  len,  0.0f,  0.0f,  1.0f,
+     len, -len,  len,  0.0f,  0.0f,  1.0f,
+     len,  len,  len,  0.0f,  0.0f,  1.0f,
+     len,  len,  len,  0.0f,  0.0f,  1.0f,
+    -len,  len,  len,  0.0f,  0.0f,  1.0f,
+    -len, -len,  len,  0.0f,  0.0f,  1.0f,
 
-    -len,  len,  len,
-    -len,  len, -len,
-    -len, -len, -len,
-    -len, -len, -len,
-    -len, -len,  len,
-    -len,  len,  len,
+    -len,  len,  len, -1.0f,  0.0f,  0.0f,
+    -len,  len, -len, -1.0f,  0.0f,  0.0f,
+    -len, -len, -len, -1.0f,  0.0f,  0.0f,
+    -len, -len, -len, -1.0f,  0.0f,  0.0f,
+    -len, -len,  len, -1.0f,  0.0f,  0.0f,
+    -len,  len,  len, -1.0f,  0.0f,  0.0f,
 
-    len,  len,  len,
-    len,  len, -len,
-    len, -len, -len,
-    len, -len, -len,
-    len, -len,  len,
-    len,  len,  len,
+     len,  len,  len,  1.0f,  0.0f,  0.0f,
+     len,  len, -len,  1.0f,  0.0f,  0.0f,
+     len, -len, -len,  1.0f,  0.0f,  0.0f,
+     len, -len, -len,  1.0f,  0.0f,  0.0f,
+     len, -len,  len,  1.0f,  0.0f,  0.0f,
+     len,  len,  len,  1.0f,  0.0f,  0.0f,
 
-    -len, -len, -len,
-    len, -len, -len,
-    len, -len,  len,
-    len, -len,  len,
-    -len, -len,  len,
-    -len, -len, -len,
+    -len, -len, -len,  0.0f, -1.0f,  0.0f,
+     len, -len, -len,  0.0f, -1.0f,  0.0f,
+     len, -len,  len,  0.0f, -1.0f,  0.0f,
+     len, -len,  len,  0.0f, -1.0f,  0.0f,
+    -len, -len,  len,  0.0f, -1.0f,  0.0f,
+    -len, -len, -len,  0.0f, -1.0f,  0.0f,
 
-    -len,  len, -len,
-    len,  len, -len,
-    len,  len,  len,
-    len,  len,  len,
-    -len,  len,  len,
-    -len,  len, -len
+    -len,  len, -len,  0.0f,  1.0f,  0.0f,
+     len,  len, -len,  0.0f,  1.0f,  0.0f,
+     len,  len,  len,  0.0f,  1.0f,  0.0f,
+     len,  len,  len,  0.0f,  1.0f,  0.0f,
+    -len,  len,  len,  0.0f,  1.0f,  0.0f,
+    -len,  len, -len,  0.0f,  1.0f,  0.0f
   };
 
   // Load cube vertices into GPU memory
@@ -83,8 +92,12 @@ void Renderer::InitRenderData()
   glBindBuffer(GL_ARRAY_BUFFER, cube_vbo);  // Bind VBO as active buffer
   glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);  // Copy vertex data to buffer
   // Specify that position data is going to attribute index 0 and contains 3 floats per vertex:
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), (GLvoid*)0);  
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (GLvoid*)0);  
   glEnableVertexAttribArray(0);  // Enable attribute index 0 as being used
+  // Normal attribute
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (GLvoid*)(3*sizeof(GLfloat)));
+  glEnableVertexAttribArray(1);
+
   glBindBuffer(GL_ARRAY_BUFFER, 0); // Unbind VBO
   glBindVertexArray(0); // Unbind VAO
 

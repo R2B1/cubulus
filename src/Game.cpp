@@ -15,7 +15,8 @@ void Game::Init()
   camera_phi_ = 0.f*(PI/180.f);  // -45 to 45 deg
 
   ResourceManager::LoadShader("../../src/shaders/cube.vert", "../../src/shaders/cube.frag", nullptr, "cube_shader");
-  renderer = new Renderer(ResourceManager::GetShader("cube_shader"));
+  ResourceManager::LoadShader("../../src/shaders/line.vert", "../../src/shaders/line.frag", nullptr, "line_shader");
+  renderer = new Renderer(ResourceManager::GetShader("cube_shader"), ResourceManager::GetShader("line_shader"));
 
   //Level one; one.load("levels/1.txt");
   //levels_.push_back(one);
@@ -28,7 +29,7 @@ void Game::ProcessInput(GLfloat dt)
   glfwPollEvents();  // Check for input
   //glfwWaitEvents();  // Sleep until new event is received
 
-  GLfloat ang_vel = PI / 1.f;  // [rad/s]
+  GLfloat ang_vel = PI / 2.f;  // [rad/s]
 
   // Check input for camera rotation
   if (keys_[GLFW_KEY_A]) { camera_theta_ += ang_vel*dt; }
@@ -52,7 +53,13 @@ void Game::ProcessInput(GLfloat dt)
     break;
 
   case ROTATING:  //--------------------
-    if (rotation_angle_ < PI / 2.f)
+    
+    GLfloat snap_angle;
+    //arcsin(tan(30))=35.264 degrees
+    if (rot_direction_ == ROT_LEFT || rot_direction_ == ROT_RIGHT)  snap_angle = 45.f*(PI / 180.f);
+    if (rot_direction_ == ROT_UP   || rot_direction_ == ROT_DOWN )  snap_angle = asin(tan(PI/6.0f));
+
+    if (rotation_angle_ < snap_angle)
     {
       switch (rot_direction_)
       {
@@ -63,10 +70,10 @@ void Game::ProcessInput(GLfloat dt)
       }
       rotation_angle_ += ang_vel*dt;
     }
-    else if (rotation_angle_ >= PI / 2.f)
+    else if (rotation_angle_ >= snap_angle)
     { 
       // Adjust final angle to a multiple of 90 degrees
-      GLfloat correction_angle = rotation_angle_ - PI / 2.f;
+      GLfloat correction_angle = rotation_angle_ - snap_angle;
       switch (rot_direction_)
       {
       case ROT_LEFT:  level_theta_ += correction_angle;  break;
@@ -81,93 +88,119 @@ void Game::ProcessInput(GLfloat dt)
 
 void Game::Update(GLfloat dt)
 {
-  // Set projection
+  // Update projection (does this need to be updated?)
   GLfloat len = 5.0f;
   //                     glm::ortho(left,right,bottom,top,near,far)
-  glm::mat4 projection = glm::ortho(-len, len, -len, len, -1.f*len, 1.f*len);
-  ResourceManager::GetShader("cube_shader").SetMatrix4("uni_projection", projection);
-  //ResourceManager::GetShader("grid_shader").SetMatrix4("uni_projection", projection);
+  glm::mat4 projection = glm::ortho(-len, len, -len, len, -2.f*len, 2.f*len);
   
-  // Set view
+  // Update view
   GLfloat radius = 1.0f;
   GLfloat cam_x = radius*cos(camera_phi_)*cos(camera_theta_);
   GLfloat cam_z = radius*cos(camera_phi_)*sin(camera_theta_);
   GLfloat cam_y = radius*sin(camera_phi_);
   glm::vec3 position = glm::vec3(cam_x, cam_y, cam_z);
-  glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
-  glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+  glm::vec3 target   = glm::vec3(0.0f, 0.0f, 0.0f);
+  glm::vec3 up       = glm::vec3(0.0f, 1.0f, 0.0f);
   glm::mat4 camera_view = glm::lookAt(position, target, up);
+
+  // Set uniforms
+  renderer->cube_shader_.Use();
+  ResourceManager::GetShader("cube_shader").SetMatrix4("uni_projection", projection);
   ResourceManager::GetShader("cube_shader").SetMatrix4("uni_view", camera_view);
-  //ResourceManager::GetShader("grid_shader").SetMatrix4("uni_view", camera_view);
+
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[0].direction", 1.f, 0.f, 0.f);
+  //ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[0].ambient", 0.f, 0.f, 0.f);
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[0].diffuse", 1.f, 0.f, 0.f);
+
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[1].direction", -1.f, 0.f, 0.f);
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[1].diffuse", 0.f, 0.f, 1.f);
+
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[2].direction", 0.f, 1.f, 0.f);
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[2].diffuse", 0.f, 1.f, 0.f);
+
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[3].direction", 0.f, -1.f, 0.f);
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[3].diffuse", 1.f, 1.f, 0.f);
+  
+  renderer->line_shader_.Use();
+  ResourceManager::GetShader("line_shader").SetMatrix4("uni_projection", projection);
+  ResourceManager::GetShader("line_shader").SetMatrix4("uni_view", camera_view);
+
 }
 
 void Game::Render(GLFWwindow* window)
 {
   glm::vec4 color;
 
-  if (state_ == ACTIVE || state_ == ROTATING)
+  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  // Unit vectors
+  glm::vec3 unitx = glm::vec3(1.0f, 0.0f, 0.0f);
+  glm::vec3 unity = glm::vec3(0.0f, 1.0f, 0.0f);
+  glm::vec3 unitz = glm::vec3(0.0f, 0.0f, 1.0f);
+
+  glm::vec3 grid_positions[] =
   {
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glm::vec3(0.0f,  0.0f,  -2.5f),
+    glm::vec3(0.0f,  0.0f,  -1.5f),
+    glm::vec3(0.0f,  0.0f,  -0.5f),
+    glm::vec3(0.0f,  0.0f,  0.5f),
+    glm::vec3(0.0f,  0.0f,  1.5f),
+    glm::vec3(0.0f,  0.0f,  2.5f),
+  };
 
-    // Unit vectors
-    glm::vec3 unitx = glm::vec3(1.0f, 0.0f, 0.0f);
-    glm::vec3 unity = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 unitz = glm::vec3(0.0f, 0.0f, 1.0f);
+  // Draw grid
+  glBindVertexArray(renderer->grid_vao_);
+  color = glm::vec4(0.5f, 0.5f, 0.5f, 1.f);  // Grey
+  // Draw grid lines along the x-axis
+  for (GLuint i = 0; i < sizeof(grid_positions) / 12; i++)
+    renderer->DrawLine(grid_positions[i], 0.f, unity, color);
+  // Draw grid lines along the z-axis
+  for (GLuint i = 0; i < sizeof(grid_positions) / 12; i++)
+    renderer->DrawLine(grid_positions[i], PI / 2.f, unity, color);
+  glBindVertexArray(0);
 
-    glm::vec3 grid_positions[] =
-    {
-      glm::vec3(0.0f,  0.0f,  -2.5f),
-      glm::vec3(0.0f,  0.0f,  -1.5f),
-      glm::vec3(0.0f,  0.0f,  -0.5f),
-      glm::vec3(0.0f,  0.0f,  0.5f),
-      glm::vec3(0.0f,  0.0f,  1.5f),
-      glm::vec3(0.0f,  0.0f,  2.5f),
-    };
+  // Draw axes
+  glBindVertexArray(renderer->axis_vao_);
+  // Draw x-axis
+  color = glm::vec4(1.f, 0.f, 0.f, 1.f);  // Red
+  renderer->DrawLine(glm::vec3(0.0f, 0.0f, 0.0f), 0.f, unity, color);
+  // Draw y-axis
+  color = glm::vec4(0.f, 1.f, 0.f, 1.f);  // Green
+  renderer->DrawLine(glm::vec3(0.0f, 0.0f, 0.0f), PI / 2.f, unitz, color);
+  // Draw z-axis
+  color = glm::vec4(0.f, 0.f, 1.f, 1.f);  // Blue
+  renderer->DrawLine(glm::vec3(0.0f, 0.0f, 0.0f), -PI / 2.f, unity, color);
+  glBindVertexArray(0);
 
-    // Draw grid
-    glBindVertexArray(renderer->grid_vao_);
-    color = glm::vec4(0.5f, 0.5f, 0.5f, 1.f);  // Grey
-    // Draw grid lines along the x-axis
-    for (GLuint i = 0; i < sizeof(grid_positions) / 12; i++)
-      renderer->DrawLine(grid_positions[i], 0.f, unity, color);
-    // Draw grid lines along the z-axis
-    for (GLuint i = 0; i < sizeof(grid_positions) / 12; i++)
-      renderer->DrawLine(grid_positions[i], PI / 2.f, unity, color);
-    glBindVertexArray(0);
+  // (cube positions are hard-coded here for now but will be loaded from a file into a level object)
+  glm::vec3 cube_positions[] =
+  {
+    glm::vec3(1.0f,  0.0f,  -1.0f),
+    glm::vec3(1.0f,  0.0f,  -2.0f),
+    glm::vec3(-1.0f,  -1.0f,  0.0f),
+    glm::vec3(0.0f,  2.0f,  0.0f),
+    glm::vec3(0.0f,  -2.0f,  2.0f),
+    glm::vec3(-2.0f,  -2.0f,  0.0f),
+    glm::vec3(2.0f,  2.0f,  2.0f),
 
-    // Draw axes
-    glBindVertexArray(renderer->axis_vao_);
-    // Draw x-axis
-    color = glm::vec4(1.f, 0.f, 0.f, 1.f);  // Red
-    renderer->DrawLine(glm::vec3(0.0f, 0.0f, 0.0f), 0.f, unity, color);
-    // Draw y-axis
-    color = glm::vec4(0.f, 1.f, 0.f, 1.f);  // Green
-    renderer->DrawLine(glm::vec3(0.0f, 0.0f, 0.0f), PI / 2.f, unitz, color);
-    // Draw z-axis
-    color = glm::vec4(0.f, 0.f, 1.f, 1.f);  // Blue
-    renderer->DrawLine(glm::vec3(0.0f, 0.0f, 0.0f), -PI / 2.f, unity, color);
-    glBindVertexArray(0);
+    glm::vec3(0.0f,  0.0f,  0.0f),
+    glm::vec3(-1.0f,  0.0f,  2.0f),
+    glm::vec3(0.0f,  -1.0f,  1.0f),
+    glm::vec3(2.0f,  2.0f,  0.0f),
+    glm::vec3(1.0f,  -2.0f,  2.0f),
+    glm::vec3(-2.0f,  1.0f,  -1.0f),
+    glm::vec3(2.0f,  2.0f,  -2.0f)
 
-    // (cube positions are hard-coded here for now but will be loaded from a file into a level object)
-    glm::vec3 cube_positions[] =
-    {
-      glm::vec3(1.0f,  0.0f,  -1.0f),
-      glm::vec3(1.0f,  0.0f,  -2.0f),
-      glm::vec3(-1.0f,  -1.0f,  0.0f),
-      glm::vec3(0.0f,  2.0f,  0.0f),
-      glm::vec3(0.0f,  -2.0f,  2.0f),
-      glm::vec3(-2.0f,  -2.0f,  0.0f),
-      glm::vec3(2.0f,  2.0f,  2.0f)
-    };
+  };
 
-    // Draw cubes
-    glBindVertexArray(renderer->cube_vao_);
-    color = glm::vec4(0.0f, 0.0f, 0.0f, 1.f);
-    for (GLuint i = 0; i < sizeof(cube_positions)/12; i++) 
-      renderer->DrawCube(cube_positions[i], level_theta_, level_phi_, color);
-    glBindVertexArray(0);
-    //levels_[level_num_].draw(*renderer);
-  }
+  // Draw cubes
+  glBindVertexArray(renderer->cube_vao_);
+  color = glm::vec4(1.f, 1.f, 1.f, 1.f);
+  for (GLuint i = 0; i < sizeof(cube_positions) / 12; i++)
+    renderer->DrawCube(cube_positions[i], level_theta_, level_phi_, color);
+  glBindVertexArray(0);
+  //levels_[level_num_].draw(*renderer);
+
   glfwSwapBuffers(window);
 }
