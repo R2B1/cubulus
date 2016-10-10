@@ -4,7 +4,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <GLM/glm.hpp>
-//#include "../include/Level.h"
+#include "../include/Level.h"
 
 enum GameState { ACTIVE, ROTATING, MENU, WIN };
 enum RotateState { ROT_LEFT, ROT_RIGHT, ROT_UP, ROT_DOWN };
@@ -22,8 +22,8 @@ class Game
    GLfloat level_phi_;
    GLfloat rotation_angle_;
 
-   //std::vector<GameLevel> levels_;
-   //GLuint level_num_;
+   std::vector<Level> levels_;
+   GLuint current_level_;
 
    Game(GLuint x, GLuint y);
   ~Game();

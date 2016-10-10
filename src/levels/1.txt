@@ -1,0 +1,22 @@
+#--------------------
+# Level 1
+#--------------------
+# x,y,z dimensions:
+#
+3,4,2
+#
+# Columns represent x-axis; left to right is in positive x direction.
+# Rows represent y-axis; top to bottom is in negative y direction.
+# Pages represent z-axis; front to back is in negative z direction.
+# (The camera looks down the negative z-axis, with +x right and +y up.)
+#
+0,1,0,
+1,0,0,
+0,1,0,
+0,0,0,
+#
+0,1,0,
+0,0,1,
+0,0,0,
+0,1,0,
+#--------------------
