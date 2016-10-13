@@ -3,9 +3,7 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-//#include <vector>
 #include "../include/Level.h"
-
 using std::vector;
 using std::string;
 using std::ifstream;
@@ -13,10 +11,11 @@ using std::istringstream;
 using std::getline;
 using std::stoi; 
 
-Level::Level(GLint level_number) : level_number_(level_number), number_of_cubes_(0), dim_x_(1), dim_y_(1), dim_z_(1) { init(); }
+Level::Level(GLint level_number) : level_state_(LEVEL_ACTIVE), level_number_(level_number), theta_(0), phi_(0)  { init(); }
 
 Level::~Level()  { }
 
+//----------------------------------------
 void Level::init()
 {
   LoadFromFile();
@@ -25,6 +24,7 @@ void Level::init()
   FindZProjection();
 }
 
+//----------------------------------------
 void Level::RotateLevelMatrix(GLint direction)
 {
   GLint rot_dim_x, rot_dim_y, rot_dim_z;
@@ -68,17 +68,141 @@ void Level::RotateLevelMatrix(GLint direction)
   dim_y_ = rot_dim_y;
   dim_z_ = rot_dim_z;
 
-  //PrintLevelMatrix();
-
-  cube_positions_.clear();
+  MovePlayerToFront();
+  PrintLevelMatrix();
   FindCubePositions();
-
   FindZProjection();
 }
 
+//----------------------------------------
+void Level::MovePlayer(GLint direction)
+{
+  GLint px, py, pz;
+  FindPlayer(px, py, pz);
+  //std::cout << px << py << pz << std::endl; //xxxxxxxxxxxxxxxxxxxxxx
+  
+  if (direction == 1 && px > 0)  // Move player left
+  {
+    for (GLint k = 0; k < dim_z_; k++)
+    {
+      if (level_matrix_[px - 1][py][k] == 1)
+      {
+        level_matrix_[px - 1][py][k] = 2;
+        level_matrix_[px][py][pz] = 1;
+        break;
+      }
+      if (level_matrix_[px - 1][py][k] == 3)  // Goal reached
+      {
+        level_matrix_[px - 1][py][k] = 9;
+        level_matrix_[px][py][pz] = 1;
+        level_state_ = LEVEL_WIN;
+        break;
+      }
+    }
+  }
+  else if (direction == 2 && px < (dim_x_-1))  // Move player right
+  {
+    for (GLint k = 0; k < dim_z_; k++)
+    {
+      if (level_matrix_[px + 1][py][k] == 1)
+      {
+        level_matrix_[px + 1][py][k] = 2;
+        level_matrix_[px][py][pz] = 1;
+        break;
+      }
+      if (level_matrix_[px + 1][py][k] == 3)  // Goal reached
+      {
+        level_matrix_[px + 1][py][k] = 9;
+        level_matrix_[px][py][pz] = 1;
+        level_state_ = LEVEL_WIN;
+        break;
+      }
+    }
+  }
+  else if (direction == 3 && py > 0)  // Move player up
+  {
+    for (GLint k = 0; k < dim_z_; k++)
+    {
+      if (level_matrix_[px][py - 1][k] == 1)
+      {
+        level_matrix_[px][py - 1][k] = 2;
+        level_matrix_[px][py][pz] = 1;
+        break;
+      }
+      if (level_matrix_[px][py - 1][k] == 3)  // Goal reached
+      {
+        level_matrix_[px][py - 1][k] = 9;
+        level_matrix_[px][py][pz] = 1;
+        level_state_ = LEVEL_WIN;
+        break;
+      }
+    }
+  }
+  else if (direction == 4 && py < (dim_y_ - 1))  // Move player down
+  {
+    for (GLint k = 0; k < dim_z_; k++)
+    {
+      if (level_matrix_[px][py + 1][k] == 1)
+      {
+        level_matrix_[px][py + 1][k] = 2;
+        level_matrix_[px][py][pz] = 1;
+        break;
+      }
+      if (level_matrix_[px][py + 1][k] == 3)  // Goal reached
+      {
+        level_matrix_[px][py + 1][k] = 9;
+        level_matrix_[px][py][pz] = 1;
+        level_state_ = LEVEL_WIN;
+        break;
+      }
+    }
+  }
+  FindCubePositions();
+  FindZProjection();
+}
+
+//----------------------------------------
+void Level::Draw(Renderer& renderer)
+{
+  // Draw regular cubes
+  GLint cube_type = 1;
+  for (GLuint i = 0; i < cube_positions_.size(); i++)
+  {
+    renderer.DrawCube(cube_positions_[i], theta_, phi_, cube_type);
+  }
+  if (level_state_ == LEVEL_ACTIVE)
+  {
+    // Draw player cube
+    cube_type = 2;
+    renderer.DrawCube(player_position_, theta_, phi_, cube_type);
+    // Draw goal cube
+    cube_type = 3;
+    renderer.DrawCube(goal_position_, theta_, phi_, cube_type);
+  }
+  else if (level_state_ == LEVEL_WIN)
+  {
+    // Draw win cube
+    cube_type = 9;
+    renderer.DrawCube(win_position_, theta_, phi_, cube_type);
+  }
+}
+
+//----------------------------------------
+void Level::Reset()
+{
+  level_state_ = LEVEL_ACTIVE;
+  level_matrix_.clear();
+  z_projection_.clear();
+  cube_positions_.clear();
+  theta_ = 0.f;
+  phi_ = 0.f;
+  init();
+}
+
+//----------------------------------------
 void Level::LoadFromFile()
 {
-  string filename = "../../src/levels/1.txt";
+  string filename = "../../src/levels/" + std::to_string(level_number_ + 1) + ".txt";
   ifstream inFile(filename);
   string str;
 
@@ -119,19 +243,25 @@ void Level::LoadFromFile()
   inFile.close();
 
   level_matrix_ = lev;
-
 }
 
+//----------------------------------------
 void Level::FindZProjection()
 {
   vector<vector<GLint>> proj(dim_x_, vector<GLint>(dim_y_));
 
-  for (GLint k = 0; k < dim_z_; k++) {
+  for (GLint j = 0; j < dim_y_; j++) {
+    for (GLint i = 0; i < dim_x_; i++) {
+      proj[i][j] = 0;  
+    }
+  }
+
+  for (GLint k = dim_z_-1; k >= 0; k--) {  // back to front
     for (GLint j = 0; j < dim_y_; j++) {
       for (GLint i = 0; i < dim_x_; i++) {
         if (level_matrix_[i][j][k] > 0)
         {
-          proj[i][j] = 1;
+          proj[i][j] = level_matrix_[i][j][k];
         }
       }
     }
@@ -141,15 +271,72 @@ void Level::FindZProjection()
   z_projection_ = proj;
 
   // Print z-projection matrix
-  for (GLint j = 0; j < dim_y_; j++) {
+  /*for (GLint j = 0; j < dim_y_; j++) {
     for (GLint i = 0; i < dim_x_; i++) {
       std::cout << z_projection_[i][j]; }
     std::cout << std::endl; }
-  std::cout << "--------------------" << std::endl;
+  std::cout << "--------------------" << std::endl;*/
 }
 
+//----------------------------------------
+void Level::MovePlayerToFront()
+{
+  GLint pi, pj, pk;
+  FindPlayer(pi, pj, pk);
+
+  for (GLint k = 0; k < dim_z_; k++) 
+  {
+    // (make switch)
+    if (level_matrix_[pi][pj][k] == 1)
+    {
+      // Move player to frontmost cube
+      level_matrix_[pi][pj][k] = 2;
+      level_matrix_[pi][pj][pk] = 1;
+      break;
+    }
+    if (level_matrix_[pi][pj][k] == 2)
+    {
+      // Player is already at frontmost cube
+      break;
+    }
+    if (level_matrix_[pi][pj][k] == 3)
+    {
+      // Player is moved to goal
+      level_matrix_[pi][pj][k] = 9;
+      level_matrix_[pi][pj][pk] = 1;
+      level_state_ = LEVEL_WIN;
+      break;
+    }
+  }
+}
+
+//----------------------------------------
+void Level::FindPlayer(GLint& px, GLint& py, GLint& pz)
+{
+  for (GLint k = 0; k < dim_z_; k++) {
+    for (GLint j = 0; j < dim_y_; j++) {
+      for (GLint i = 0; i < dim_x_; i++) {
+        if (level_matrix_[i][j][k] == 2)
+        {
+          px = i;
+          py = j;
+          pz = k;
+          return;
+        }
+      }
+    }
+  }
+  px = 0;
+  py = 0;
+  pz = 0;
+  return;
+}
+
+//----------------------------------------
 void Level::FindCubePositions()
 {
+  cube_positions_.clear();
+
   GLfloat* shift_x = new GLfloat[dim_x_];
   GLfloat* shift_y = new GLfloat[dim_y_];
   GLfloat* shift_z = new GLfloat[dim_z_];
@@ -165,9 +352,21 @@ void Level::FindCubePositions()
   for (GLint k = 0; k < dim_z_; k++) {
     for (GLint j = 0; j < dim_y_; j++) {
       for (GLint i = 0; i < dim_x_; i++) {
-        if (level_matrix_[i][j][k] > 0) 
-        { 
+        if (level_matrix_[i][j][k] == 1)  // Regular cube 
+        {
           cube_positions_.push_back(glm::vec3(shift_x[i], shift_y[j], shift_z[k]));
+        }
+        else if (level_matrix_[i][j][k] == 2)  // Player cube
+        {
+          player_position_ = glm::vec3(shift_x[i], shift_y[j], shift_z[k]);
+        }
+        else if (level_matrix_[i][j][k] == 3)  // Goal cube
+        {
+          goal_position_ = glm::vec3(shift_x[i], shift_y[j], shift_z[k]);
+        }
+        else if (level_matrix_[i][j][k] == 9)  // Win cube
+        {
+          win_position_ = glm::vec3(shift_x[i], shift_y[j], shift_z[k]);
         }
       }
     }
@@ -178,6 +377,7 @@ void Level::FindCubePositions()
   delete[] shift_z;
 }
 
+//----------------------------------------
 void Level::FindNumberOfCubes()
 {
   number_of_cubes_ = 0;
@@ -191,6 +391,7 @@ void Level::FindNumberOfCubes()
 
 }
 
+//----------------------------------------
 void Level::PrintLevelMatrix()
 {
   for (GLint k = 0; k < dim_z_; k++)  {

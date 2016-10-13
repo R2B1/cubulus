@@ -1,7 +1,7 @@
 #include "../include/Renderer.h"
 
-Renderer::Renderer(const Shader &cubeshader, const Shader &lineshader) 
-  : cube_shader_(cubeshader), line_shader_(lineshader) 
+Renderer::Renderer(const Shader &cubeshader, const Shader &lineshader)
+  : cube_shader_(cubeshader), line_shader_(lineshader)
 { InitRenderData(); }
 
 Renderer::~Renderer() 
@@ -11,16 +11,35 @@ Renderer::~Renderer()
   glDeleteVertexArrays(1, &axis_vao_);
 }
 
-void Renderer::DrawCube(glm::vec3 position, GLfloat rotate_angle_theta, GLfloat rotate_angle_phi, glm::vec4 color)
+void Renderer::DrawCube(glm::vec3 position, GLfloat rotate_theta, GLfloat rotate_phi, GLint cube_type)
 {
+  // (Need to make a cube object!)
+  glm::vec4 color;
   cube_shader_.Use();
+
+  if (cube_type == 1)  // Regular cube
+  {
+    color = glm::vec4(1.f, 1.f, 1.f, 1.f);
+  }
+  else if (cube_type == 2)  // Player cube
+  {
+    color = glm::vec4(1.f, 0.f, 0.f, 1.f);
+  }
+  else if (cube_type == 3)  // Goal cube
+  {
+    color = glm::vec4(0.f, 0.f, 1.f, 1.f);
+  }
+  else if (cube_type == 9)  // Win cube
+  {
+    color = glm::vec4(1.f, 0.f, 1.f, 1.f);
+  }
   cube_shader_.SetVector4f("uni_color", color);
   glm::mat4 cubeModel = glm::mat4(1.0f);
-  cubeModel = glm::rotate(cubeModel, rotate_angle_theta, glm::vec3(0.0f, 1.0f, 0.0f));
-  cubeModel = glm::rotate(cubeModel, rotate_angle_phi, glm::vec3(cos(rotate_angle_theta), 0.0f, sin(rotate_angle_theta)));
+  cubeModel = glm::rotate(cubeModel, rotate_theta, glm::vec3(0.0f, 1.0f, 0.0f));
+  cubeModel = glm::rotate(cubeModel, rotate_phi, glm::vec3(cos(rotate_theta), 0.0f, sin(rotate_theta)));
   cubeModel = glm::translate(cubeModel, position);
-  //cubeModel = glm::scale(cubeModel, glm::vec3(size, 1.0f));
   cube_shader_.SetMatrix4("uni_model", cubeModel);
+
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   glDrawArrays(GL_TRIANGLES, 0, 36);
 }

@@ -10,7 +10,7 @@ class Renderer
  public:
   Renderer(const Shader &cubeshader, const Shader &lineshader);
   ~Renderer();
-  void DrawCube(glm::vec3 position, GLfloat rotate_angle_theta, GLfloat rotate_angle_phi, glm::vec4 color);
+  void DrawCube(glm::vec3 position, GLfloat rotate_theta, GLfloat rotate_phi, GLint cube_type);
   void DrawLine(glm::vec3 position, GLfloat rotate_angle, glm::vec3 rotate_axis, glm::vec4 color);
   GLuint cube_vao_;
   GLuint grid_vao_;

@@ -6,7 +6,7 @@
 #include <GLM/glm.hpp>
 #include "../include/Level.h"
 
-enum GameState { ACTIVE, ROTATING, MENU, WIN };
+enum GameState { ACTIVE, ROTATING, MENU };
 enum RotateState { ROT_LEFT, ROT_RIGHT, ROT_UP, ROT_DOWN };
 
 class Game
@@ -18,11 +18,10 @@ class Game
    GLboolean keys_[1024];
    GLfloat camera_theta_;
    GLfloat camera_phi_;
-   GLfloat level_theta_;
-   GLfloat level_phi_;
    GLfloat rotation_angle_;
 
    std::vector<Level> levels_;
+   GLuint number_of_levels_;
    GLuint current_level_;
 
    Game(GLuint x, GLuint y);
@@ -31,6 +30,9 @@ class Game
   void ProcessInput(GLfloat dt);
   void Update(GLfloat dt);
   void Render(GLFWwindow* window);
+  GLboolean IsLevelComplete();
+  void LoadNextLevel();
+  void LoadLevel(GLint number);
 };
 
 #endif

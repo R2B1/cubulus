@@ -9,50 +9,68 @@ Renderer* renderer;
 Game::Game(GLuint x, GLuint y) : state_(ACTIVE), width_(x), height_(y) { }
 Game::~Game() { delete renderer; }
 
+//----------------------------------------
 void Game::Init()
 {
-  camera_theta_ = 90.f*(PI/180.f);  // 0 to 360 deg
-  camera_phi_ = 0.f*(PI/180.f);  // -45 to 45 deg
-  level_theta_ = 0.f;
-  level_phi_ = 0.f;
-
   ResourceManager::LoadShader("../../src/shaders/cube.vert", "../../src/shaders/cube.frag", nullptr, "cube_shader");
   ResourceManager::LoadShader("../../src/shaders/line.vert", "../../src/shaders/line.frag", nullptr, "line_shader");
   renderer = new Renderer(ResourceManager::GetShader("cube_shader"), ResourceManager::GetShader("line_shader"));
 
+  number_of_levels_ = 3;
   current_level_ = 0;
-  Level new_level(current_level_);
-  levels_.push_back(new_level);
+
+  for (GLint i = 0; i < number_of_levels_; i++)
+  {
+    Level new_level(i);
+    levels_.push_back(new_level);
+  }
+
+  camera_theta_ = 90.f*(PI / 180.f);  // 0 to 360 deg
+  camera_phi_ = 0.f*(PI / 180.f);  // -45 to 45 deg
 }
 
+//----------------------------------------
 void Game::ProcessInput(GLfloat dt)
 {
   glfwPollEvents();  // Check for input
   //glfwWaitEvents();  // Sleep until new event is received
 
-  GLfloat ang_vel = PI / 1.f;  // [rad/s]
+  GLfloat lev_ang_vel = 135.f*(PI / 180.f);  // [rad/s]
+  GLfloat cam_ang_vel = 45.f*(PI / 180.f);  // [rad/s]
 
-  // Check input for camera rotation
-  if (keys_[GLFW_KEY_A]) { camera_theta_ += ang_vel*dt; }
-  if (keys_[GLFW_KEY_D]) { camera_theta_ += -ang_vel*dt; }
-  if (keys_[GLFW_KEY_W]) { if (camera_phi_ < PI/4.f) camera_phi_ += ang_vel*dt; }
-  if (keys_[GLFW_KEY_S]) { if (camera_phi_ > -PI/4.f) camera_phi_ += -ang_vel*dt; }
+  // Level shortcuts
+  if      (keys_[GLFW_KEY_1]) { LoadLevel(0);  keys_[GLFW_KEY_1] = GL_FALSE; }
+  else if (keys_[GLFW_KEY_2]) { LoadLevel(1);  keys_[GLFW_KEY_2] = GL_FALSE; }
+  else if (keys_[GLFW_KEY_3]) { LoadLevel(2);  keys_[GLFW_KEY_3] = GL_FALSE; }
+
+  // Camera rotations
+  if (keys_[GLFW_KEY_J]) { camera_theta_ += cam_ang_vel*dt; }
+  if (keys_[GLFW_KEY_L]) { camera_theta_ += -cam_ang_vel*dt; }
+  if (keys_[GLFW_KEY_I]) { if (camera_phi_ < PI/4.f) camera_phi_ += cam_ang_vel*dt; }
+  if (keys_[GLFW_KEY_K]) { if (camera_phi_ > -PI/4.f) camera_phi_ += -cam_ang_vel*dt; }
   // Reset camera view
-  if (keys_[GLFW_KEY_R]) { camera_theta_ = PI/2.f;  camera_phi_ = 0.f; }
+  if (keys_[GLFW_KEY_U]) { camera_theta_ = PI/2.f;  camera_phi_ = 0.f;  keys_[GLFW_KEY_U] = GL_FALSE; }
+  if (keys_[GLFW_KEY_O]) { camera_theta_ = PI/4.f;  camera_phi_ = asin(tan(PI/6.0f));  keys_[GLFW_KEY_O] = GL_FALSE;}  //arcsin(tan(30))=35.264 degrees}
 
-  // Check input for level rotation
   switch (state_)
   {
   case ACTIVE:  //--------------------
+
+    // Level rotations
     if (keys_[GLFW_KEY_LEFT] || keys_[GLFW_KEY_RIGHT] || keys_[GLFW_KEY_UP] || keys_[GLFW_KEY_DOWN])
     {
-      if      (keys_[GLFW_KEY_LEFT])  { rot_direction_ = ROT_LEFT; }
-      else if (keys_[GLFW_KEY_RIGHT]) { rot_direction_ = ROT_RIGHT; }
-      else if (keys_[GLFW_KEY_UP])    { rot_direction_ = ROT_UP; }
-      else if (keys_[GLFW_KEY_DOWN])  { rot_direction_ = ROT_DOWN; }
+      if (keys_[GLFW_KEY_LEFT])       { rot_direction_ = ROT_LEFT;  keys_[GLFW_KEY_LEFT] = GL_FALSE; }
+      else if (keys_[GLFW_KEY_RIGHT]) { rot_direction_ = ROT_RIGHT; keys_[GLFW_KEY_RIGHT] = GL_FALSE; }
+      else if (keys_[GLFW_KEY_UP])    { rot_direction_ = ROT_UP;    keys_[GLFW_KEY_UP] = GL_FALSE; }
+      else if (keys_[GLFW_KEY_DOWN])  { rot_direction_ = ROT_DOWN;  keys_[GLFW_KEY_DOWN] = GL_FALSE; }
       rotation_angle_ = 0.f;
       state_ = ROTATING;
     }
+    // Player movements
+    else if (keys_[GLFW_KEY_A]) { levels_[current_level_].MovePlayer(1); keys_[GLFW_KEY_A] = GL_FALSE; }  // Left
+    else if (keys_[GLFW_KEY_D]) { levels_[current_level_].MovePlayer(2); keys_[GLFW_KEY_D] = GL_FALSE; }  // Right
+    else if (keys_[GLFW_KEY_W]) { levels_[current_level_].MovePlayer(3); keys_[GLFW_KEY_W] = GL_FALSE; }  // Up
+    else if (keys_[GLFW_KEY_S]) { levels_[current_level_].MovePlayer(4); keys_[GLFW_KEY_S] = GL_FALSE; }  // Down
     break;
 
   case ROTATING:  //--------------------
@@ -63,21 +81,21 @@ void Game::ProcessInput(GLfloat dt)
 //    if (rot_direction_ == ROT_UP   || rot_direction_ == ROT_DOWN )  snap_angle = asin(tan(PI/6.0f));
     snap_angle = 90.f*(PI / 180.f);
 
-    if ((rotation_angle_ + ang_vel*dt) <= snap_angle)
+    if ((rotation_angle_ + lev_ang_vel*dt) <= snap_angle)
     {
       switch (rot_direction_)
       {
-      case ROT_LEFT:  level_theta_ += -ang_vel*dt; break;
-      case ROT_RIGHT: level_theta_ += ang_vel*dt;  break;
-      case ROT_UP:    level_phi_ += -ang_vel*dt;  break;
-      case ROT_DOWN:  level_phi_ += ang_vel*dt;  break;
+      case ROT_LEFT:  levels_[current_level_].theta_ += -lev_ang_vel*dt; break;
+      case ROT_RIGHT: levels_[current_level_].theta_ += lev_ang_vel*dt;  break;
+      case ROT_UP:    levels_[current_level_].phi_ += -lev_ang_vel*dt;  break;
+      case ROT_DOWN:  levels_[current_level_].phi_ += lev_ang_vel*dt;  break;
       }
-      rotation_angle_ += ang_vel*dt;
+      rotation_angle_ += lev_ang_vel*dt;
     }
-    else if ((rotation_angle_ + ang_vel*dt) > snap_angle)
+    else if ((rotation_angle_ + lev_ang_vel*dt) > snap_angle)
     {   
-      level_theta_ = 0.f;
-      level_phi_ = 0.f;
+      levels_[current_level_].theta_ = 0.f;
+      levels_[current_level_].phi_ = 0.f;
 
       switch (rot_direction_)
       {
@@ -91,6 +109,7 @@ void Game::ProcessInput(GLfloat dt)
   }
 }
 
+//----------------------------------------
 void Game::Update(GLfloat dt)
 {
   // Update projection (does this need to be updated?)
@@ -108,41 +127,48 @@ void Game::Update(GLfloat dt)
   glm::vec3 up       = glm::vec3(0.0f, 1.0f, 0.0f);
   glm::mat4 camera_view = glm::lookAt(position, target, up);
 
-  // Set uniforms
+  // Set uniforms for cube shader
   renderer->cube_shader_.Use();
   ResourceManager::GetShader("cube_shader").SetMatrix4("uni_projection", projection);
   ResourceManager::GetShader("cube_shader").SetMatrix4("uni_view", camera_view);
-
-  // Left light
-  glm::vec3 diffuse_color = glm::vec3(1.0f, 0.0f, 0.0f);
-  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[0].direction", 1.f, 0.f, 0.f);
+  // Front light
+  glm::vec3 diffuse_color = glm::vec3(1.0f, 1.0f, 1.0f);
+  glm::vec3 ambient_color = glm::vec3(0.2f, 0.2f, 0.2f);
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[0].direction", 0.f, 0.f, -1.f);
   ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[0].diffuse", diffuse_color);
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[0].ambient", ambient_color);
 
+  /*
+  // Left light
+  glm::vec3 diffuse_color = glm::vec3(1.0f, 1.0f, 1.0f);
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[0].direction", 0.f, 0.f, -1.f);
+  ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[0].diffuse", diffuse_color);
   // Right light
-  diffuse_color = glm::vec3(0.0f, 1.0f, 0.0f);
+  diffuse_color = glm::vec3(0.0f, 0.0f, 0.0f);
   ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[1].direction", -1.f, 0.f, 0.f);
   ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[1].diffuse", diffuse_color);
-
   // Top light
-  diffuse_color = glm::vec3(1.0f, 1.0f, 0.0f);
+  diffuse_color = glm::vec3(0.0f, 0.0f, 0.0f);
   ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[2].direction", 0.f, -1.f, 0.f);
   ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[2].diffuse", diffuse_color);
-
   // Bottom light
-  diffuse_color = glm::vec3(0.0f, 0.0f, 1.0f);
+  diffuse_color = glm::vec3(0.0f, 0.0f, 0.0f);
   ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[3].direction", 0.f, 1.f, 0.f);
   ResourceManager::GetShader("cube_shader").SetVector3f("uni_light[3].diffuse", diffuse_color);
+  */
 
+  // Set uniforms for grid/axes shader
   renderer->line_shader_.Use();
   ResourceManager::GetShader("line_shader").SetMatrix4("uni_projection", projection);
   ResourceManager::GetShader("line_shader").SetMatrix4("uni_view", camera_view);
 }
 
+//----------------------------------------
 void Game::Render(GLFWwindow* window)
 {
   glm::vec4 color;
 
-  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // Unit vectors
@@ -187,12 +213,34 @@ void Game::Render(GLFWwindow* window)
   */
 
   // Draw cubes
-  //levels_[current_level_].draw(*renderer);
   glBindVertexArray(renderer->cube_vao_);
-  color = glm::vec4(1.f, 1.f, 1.f, 1.f);
-  for (GLuint i = 0; i < levels_[0].cube_positions_.size(); i++)
-      renderer->DrawCube(levels_[0].cube_positions_[i], level_theta_, level_phi_, color);
+  levels_[current_level_].Draw(*renderer);
   glBindVertexArray(0);
 
   glfwSwapBuffers(window);
+}
+
+//----------------------------------------
+GLboolean Game::IsLevelComplete()
+{
+  if (levels_[current_level_].level_state_ == LEVEL_WIN)  { return true; }
+  else  { return false; }
+}
+
+//----------------------------------------
+void Game::LoadNextLevel()
+{
+  if (current_level_ < number_of_levels_ - 1) { LoadLevel(current_level_ + 1); }
+  else if (current_level_ == number_of_levels_ - 1)  { LoadLevel(0); }  // Last levels loops back to level 1
+  LoadLevel(current_level_);
+}
+
+//----------------------------------------
+void Game::LoadLevel(GLint number)
+{
+  if (number >= 0 && number < number_of_levels_)
+  { 
+    current_level_ = number;
+    levels_[current_level_].Reset();
+  }
 }

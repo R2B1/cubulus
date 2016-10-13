@@ -26,14 +26,30 @@ int main()
   // Game loop
   while (!glfwWindowShouldClose(window))
   {
-    // (need to set a fixed frame rate of 60 fps)
+    // (should set a fixed frame rate of 60 fps)
     GLfloat current_frame = glfwGetTime();  // [s]
     delta_t = current_frame - last_frame;
     last_frame = current_frame;
 
-    cubulus.ProcessInput(delta_t);
-    cubulus.Update(delta_t);
-    cubulus.Render(window);
+    if (cubulus.IsLevelComplete()) 
+    { 
+      // Wait before loading next level
+      // (make a timer class or something)
+      GLfloat start_time = glfwGetTime();
+      GLfloat wait_time = 1.f;  // [s]
+      GLfloat elapsed_time = 0.f;
+      while (elapsed_time < wait_time)
+      {
+        elapsed_time = glfwGetTime() - start_time;
+      }
+      cubulus.LoadNextLevel();       
+    }
+    else
+    {
+      cubulus.ProcessInput(delta_t);
+      cubulus.Update(delta_t);
+      cubulus.Render(window);
+    }
   }
 
   ResourceManager::Clear();
