@@ -107,6 +107,8 @@ void Game::ProcessInput(GLfloat dt)
       state_ = ACTIVE;
     }
   }
+  if      (levels_[current_level_].level_state_ == LEVEL_WIN)  { state_ = WIN; }
+  else if (levels_[current_level_].level_state_ == LEVEL_LOSE) { state_ = LOSE; }
 }
 
 //----------------------------------------
@@ -218,13 +220,6 @@ void Game::Render(GLFWwindow* window)
   glBindVertexArray(0);
 
   glfwSwapBuffers(window);
-}
-
-//----------------------------------------
-GLboolean Game::IsLevelComplete()
-{
-  if (levels_[current_level_].level_state_ == LEVEL_WIN)  { return true; }
-  else  { return false; }
 }
 
 //----------------------------------------

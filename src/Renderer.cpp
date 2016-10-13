@@ -23,15 +23,23 @@ void Renderer::DrawCube(glm::vec3 position, GLfloat rotate_theta, GLfloat rotate
   }
   else if (cube_type == 2)  // Player cube
   {
-    color = glm::vec4(1.f, 0.f, 0.f, 1.f);
+    color = glm::vec4(0.f, 0.f, 1.f, 1.f);
   }
   else if (cube_type == 3)  // Goal cube
   {
-    color = glm::vec4(0.f, 0.f, 1.f, 1.f);
+    color = glm::vec4(1.f, 1.f, 0.f, 1.f);
+  }
+  else if (cube_type == 4)  // Enemy cube
+  {
+    color = glm::vec4(1.f, 0.f, 0.f, 1.f);
+  }
+  else if (cube_type == 8)  // Lose cube
+  {
+    color = glm::vec4(1.f, 0.f, 1.f, 1.f);
   }
   else if (cube_type == 9)  // Win cube
   {
-    color = glm::vec4(1.f, 0.f, 1.f, 1.f);
+    color = glm::vec4(0.f, 1.f, 0.f, 1.f);
   }
   cube_shader_.SetVector4f("uni_color", color);
   glm::mat4 cubeModel = glm::mat4(1.0f);
@@ -57,7 +65,7 @@ void Renderer::DrawLine(glm::vec3 position, GLfloat rotate_angle, glm::vec3 rota
 
 void Renderer::InitRenderData()
 {	
-  GLfloat len = 0.505f;
+  GLfloat len = 0.5f;
   GLfloat cube_vertices[] = {
      // Positions      // Normals
     -len, -len, -len,  0.0f,  0.0f, -1.0f,

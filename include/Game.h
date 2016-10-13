@@ -6,7 +6,7 @@
 #include <GLM/glm.hpp>
 #include "../include/Level.h"
 
-enum GameState { ACTIVE, ROTATING, MENU };
+enum GameState { ACTIVE, ROTATING, WIN, LOSE, MENU };
 enum RotateState { ROT_LEFT, ROT_RIGHT, ROT_UP, ROT_DOWN };
 
 class Game
@@ -30,7 +30,6 @@ class Game
   void ProcessInput(GLfloat dt);
   void Update(GLfloat dt);
   void Render(GLFWwindow* window);
-  GLboolean IsLevelComplete();
   void LoadNextLevel();
   void LoadLevel(GLint number);
 };

@@ -6,7 +6,7 @@
 #include "Renderer.h"
 using std::vector;
 
-enum LevelState { LEVEL_ACTIVE, LEVEL_WIN };
+enum LevelState { LEVEL_ACTIVE, LEVEL_WIN, LEVEL_LOSE };
 
 class Level
 {
@@ -22,9 +22,11 @@ class Level
   vector<vector<GLint>> z_projection_;
 
   vector<glm::vec3> cube_positions_;
+  vector<glm::vec3> enemy_positions_;
   glm::vec3 player_position_;
   glm::vec3 goal_position_;
   glm::vec3 win_position_;
+  glm::vec3 lose_position_;
 
   GLint level_number_;
   GLint dim_x_, dim_y_, dim_z_;  // Level dimensions

@@ -31,24 +31,22 @@ int main()
     delta_t = current_frame - last_frame;
     last_frame = current_frame;
 
-    if (cubulus.IsLevelComplete()) 
+    if (cubulus.state_ == ACTIVE || cubulus.state_ == ROTATING)
+    {
+      cubulus.ProcessInput(delta_t);
+      cubulus.Update(delta_t);
+      cubulus.Render(window);
+    }
+    else if (cubulus.state_ == WIN || cubulus.state_ == LOSE) 
     { 
       // Wait before loading next level
       // (make a timer class or something)
       GLfloat start_time = glfwGetTime();
       GLfloat wait_time = 1.f;  // [s]
       GLfloat elapsed_time = 0.f;
-      while (elapsed_time < wait_time)
-      {
-        elapsed_time = glfwGetTime() - start_time;
-      }
-      cubulus.LoadNextLevel();       
-    }
-    else
-    {
-      cubulus.ProcessInput(delta_t);
-      cubulus.Update(delta_t);
-      cubulus.Render(window);
+      while (elapsed_time < wait_time) { elapsed_time = glfwGetTime() - start_time; }
+      if      (cubulus.state_ == WIN)  { cubulus.LoadNextLevel();  cubulus.state_ = ACTIVE; }
+      else if (cubulus.state_ == LOSE) { cubulus.levels_[cubulus.current_level_].Reset();  cubulus.state_ = ACTIVE; }
     }
   }
 

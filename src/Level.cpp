@@ -77,6 +77,7 @@ void Level::RotateLevelMatrix(GLint direction)
 //----------------------------------------
 void Level::MovePlayer(GLint direction)
 {
+  //(need to organize this better...)
   GLint px, py, pz;
   FindPlayer(px, py, pz);
   //std::cout << px << py << pz << std::endl; //xxxxxxxxxxxxxxxxxxxxxx
@@ -93,11 +94,19 @@ void Level::MovePlayer(GLint direction)
       }
       if (level_matrix_[px - 1][py][k] == 3)  // Goal reached
       {
-        level_matrix_[px - 1][py][k] = 9;
+        level_matrix_[px - 1][py][k] = 9;  // Win cube
         level_matrix_[px][py][pz] = 1;
         level_state_ = LEVEL_WIN;
         break;
       }
+      if (level_matrix_[px - 1][py][k] == 4)  // Enemy encountered
+      {
+        level_matrix_[px - 1][py][k] = 8;  // Lose cube
+        level_matrix_[px][py][pz] = 1;
+        level_state_ = LEVEL_LOSE;
+        break;
+      }
+
     }
   }
   else if (direction == 2 && px < (dim_x_-1))  // Move player right
@@ -115,6 +124,13 @@ void Level::MovePlayer(GLint direction)
         level_matrix_[px + 1][py][k] = 9;
         level_matrix_[px][py][pz] = 1;
         level_state_ = LEVEL_WIN;
+        break;
+      }
+      if (level_matrix_[px + 1][py][k] == 4)  // Enemy encountered
+      {
+        level_matrix_[px + 1][py][k] = 8;
+        level_matrix_[px][py][pz] = 1;
+        level_state_ = LEVEL_LOSE;
         break;
       }
     }
@@ -136,6 +152,13 @@ void Level::MovePlayer(GLint direction)
         level_state_ = LEVEL_WIN;
         break;
       }
+      if (level_matrix_[px][py - 1][k] == 4)  // Enemy encountered
+      {
+        level_matrix_[px][py - 1][k] = 8;
+        level_matrix_[px][py][pz] = 1;
+        level_state_ = LEVEL_LOSE;
+        break;
+      }
     }
   }
   else if (direction == 4 && py < (dim_y_ - 1))  // Move player down
@@ -155,6 +178,13 @@ void Level::MovePlayer(GLint direction)
         level_state_ = LEVEL_WIN;
         break;
       }
+      if (level_matrix_[px][py + 1][k] == 4)  // Enemy encountered
+      {
+        level_matrix_[px][py + 1][k] = 8;
+        level_matrix_[px][py][pz] = 1;
+        level_state_ = LEVEL_LOSE;
+        break;
+      }
     }
   }
   FindCubePositions();
@@ -170,6 +200,14 @@ void Level::Draw(Renderer& renderer)
   {
     renderer.DrawCube(cube_positions_[i], theta_, phi_, cube_type);
   }
+
+  // Draw enemy cubes
+  cube_type = 4;
+  for (GLuint i = 0; i < enemy_positions_.size(); i++)
+  {
+    renderer.DrawCube(enemy_positions_[i], theta_, phi_, cube_type);
+  }
+
   if (level_state_ == LEVEL_ACTIVE)
   {
     // Draw player cube
@@ -185,6 +223,15 @@ void Level::Draw(Renderer& renderer)
     cube_type = 9;
     renderer.DrawCube(win_position_, theta_, phi_, cube_type);
   }
+  else if (level_state_ == LEVEL_LOSE)
+  {
+    // Draw lose cube
+    cube_type = 8;
+    renderer.DrawCube(lose_position_, theta_, phi_, cube_type);
+    // Draw goal cube
+    cube_type = 3;
+    renderer.DrawCube(goal_position_, theta_, phi_, cube_type);
+  }
 }
 
 //----------------------------------------
@@ -194,6 +241,7 @@ void Level::Reset()
   level_matrix_.clear();
   z_projection_.clear();
   cube_positions_.clear();
+  enemy_positions_.clear();
   theta_ = 0.f;
   phi_ = 0.f;
   init();
@@ -286,7 +334,6 @@ void Level::MovePlayerToFront()
 
   for (GLint k = 0; k < dim_z_; k++) 
   {
-    // (make switch)
     if (level_matrix_[pi][pj][k] == 1)
     {
       // Move player to frontmost cube
@@ -305,6 +352,14 @@ void Level::MovePlayerToFront()
       level_matrix_[pi][pj][k] = 9;
       level_matrix_[pi][pj][pk] = 1;
       level_state_ = LEVEL_WIN;
+      break;
+    }
+    if (level_matrix_[pi][pj][k] == 4)
+    {
+      // Player encounters enemy
+      level_matrix_[pi][pj][k] = 8;
+      level_matrix_[pi][pj][pk] = 1;
+      level_state_ = LEVEL_LOSE;
       break;
     }
   }
@@ -336,6 +391,7 @@ void Level::FindPlayer(GLint& px, GLint& py, GLint& pz)
 void Level::FindCubePositions()
 {
   cube_positions_.clear();
+  enemy_positions_.clear();
 
   GLfloat* shift_x = new GLfloat[dim_x_];
   GLfloat* shift_y = new GLfloat[dim_y_];
@@ -364,9 +420,17 @@ void Level::FindCubePositions()
         {
           goal_position_ = glm::vec3(shift_x[i], shift_y[j], shift_z[k]);
         }
+        else if (level_matrix_[i][j][k] == 4)  // Enemey cube
+        {
+          enemy_positions_.push_back(glm::vec3(shift_x[i], shift_y[j], shift_z[k]));
+        }
         else if (level_matrix_[i][j][k] == 9)  // Win cube
         {
           win_position_ = glm::vec3(shift_x[i], shift_y[j], shift_z[k]);
+        }
+        else if (level_matrix_[i][j][k] == 8)  // Lose cube
+        {
+          lose_position_ = glm::vec3(shift_x[i], shift_y[j], shift_z[k]);
         }
       }
     }
